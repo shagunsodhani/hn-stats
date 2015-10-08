@@ -8,10 +8,11 @@ import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration._
 import scala.collection.mutable.Map
 
-class User(uid: String) {
+class User(uid: String, numberOfOldSubmissionsToCheck: Int) {
 
   private val id: String = uid;
   val connection: com.github.mauricio.async.db.mysql.MySQLConnection = new Mysql().connect;
+  val countOfOldSubmissionsToCheck: Int = numberOfOldSubmissionsToCheck;
   Await.result(connection.connect, Duration.Inf);
 
   def getData: JsObject = {
@@ -35,7 +36,7 @@ class User(uid: String) {
 
   def getSubmissionsFromDb: Map[String, Int] = {
     //    Returns user's submission from database in form of a Map with key as submission id and value as score of the submission.
-    val query = "SELECT sid, score FROM submission where uid = ?";
+    val query = "SELECT sid, score FROM submission where uid = ? ORDER BY created_at DESC";
     val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id + "1"));
     val result = Await.result(future, Duration.Inf).rows.get;
     var submissionScoreMap: Map[String, Int] = Map[String, Int]();
@@ -87,19 +88,51 @@ class User(uid: String) {
       }
     }
 
-    var diff = karma - oldKarma;
-
-    def updateSubmissions(submissionArray: Array[String], counter: Int): Unit = {
-      if (counter > 0 && diff != 0) {
+    def findNewSubmissions(submissionArray: Array[String], counter: Int): List[String] = {
+      if (counter > 0) {
         val sid = submissionArray.head;
+        if (oldSubmissions contains sid) {
+          Nil;
+        } else {
+          sid :: findNewSubmissions(submissionArray.tail, counter - 1);
+        }
+      } else {
+        Nil;
+      }
+    }
+
+    val newSubmissions: List[String] = findNewSubmissions(submissions, submissions.length);
+
+    def updateSubmissions(submissionList: List[String], counter: Int): Unit = {
+      if (counter > 0) {
+        val sid = submissionList.head;
         val oldScore: Int = oldSubmissions.getOrElse(sid, -1);
-        diff += new Submission(sid, oldScore, connection).updateStats;
-        updateSubmissions(submissionArray.tail, counter - 1);
+        new Submission(sid, oldScore, connection).updateStats;
+        updateSubmissions(submissionList.tail, counter - 1);
         //        tail recursion
       }
     }
 
-    updateSubmissions(submissions, submissions.length);
+    def findOldSubmissionsToCheck(submissionArray: Map[String, Int], counter: Int): List[String] = {
+      if (counter > 0) {
+        submissionArray.head._1 :: findOldSubmissionsToCheck(submissionArray.tail, counter - 1);
+      } else {
+        Nil;
+      }
+    }
+
+    val counterOldSubmissionsToCheck: Int = {
+      var counterOldSubmissions: Int = 0;
+      oldSubmissions.foreach(_ => counterOldSubmissions += 1);
+      if (countOfOldSubmissionsToCheck == -1) {
+        counterOldSubmissions;
+      } else {
+        counterOldSubmissions min countOfOldSubmissionsToCheck;
+      }
+    }
+
+    val listToUpdate = newSubmissions ::: findOldSubmissionsToCheck(oldSubmissions, counterOldSubmissionsToCheck);
+    updateSubmissions(listToUpdate, listToUpdate.length);
     updateKarma;
   }
 };

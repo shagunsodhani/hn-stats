@@ -12,6 +12,7 @@ object Main {
     prop.load(new FileInputStream("src/resources/config.conf"));
     val username: String = prop.getProperty("hn.username");
     val period: Int = prop.getProperty("app.period").toInt;
+    val numberOfOldSubmissionsToCheck: Int = prop.getProperty("app.numberOfOldSubmissionsToCheck").toInt;
 
     //    file where updates are logged
     val file = new FileWriter("logging.txt", true);
@@ -20,7 +21,7 @@ object Main {
     def update: Unit = {
       file.write("Started at " + new java.util.Date + " \n");
       file.flush();
-      var user = new User(username);
+      var user = new User(username, numberOfOldSubmissionsToCheck);
       user.updateStats;
       file.write("Completed at " + new java.util.Date + " \n\n\n");
       file.flush();

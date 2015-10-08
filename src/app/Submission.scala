@@ -18,7 +18,7 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     fromURL(endpoint).mkString.parseJson.asJsObject;
   }
 
-  def updateStats: Int = {
+  def updateStats: Unit = {
     val result = getData;
     var uid: String = result.getFields("by").mkString.replace("\"", "");
     val score_string: String = result.getFields("score").mkString.replace(",", "");
@@ -48,10 +48,9 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     if (oldScore == -1) {
       //      new submission
       insertNewSubmission;
-      score;
+      updateSubmission;
+    } else if (oldScore != score) {
+      updateSubmission;
     }
-    updateSubmission;
-    score - oldScore;
   }
-
 }
