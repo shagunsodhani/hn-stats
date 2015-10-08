@@ -23,7 +23,7 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     var uid: String = result.getFields("by").mkString.replace("\"", "");
     val score_string: String = result.getFields("score").mkString.replace(",", "");
     val score: Int = {
-      if (score_string == "") 0
+      if (score_string == "") 0;
       else score_string.toInt;
     }
     val createdAt: Int = result.getFields("time").mkString.toInt;
@@ -48,7 +48,7 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     if (oldScore == -1) {
       //      new submission
       insertNewSubmission;
-      score
+      score;
     }
     updateSubmission;
     score - oldScore;

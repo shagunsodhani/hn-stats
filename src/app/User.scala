@@ -24,19 +24,19 @@ class User(uid: String) {
     //    Returns user's karma from database. If user is not found then return -1
     //    So this method doubles up to check if a user exists in database
     val query = "SELECT karma FROM user where id = ?";
-    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id))
+    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id));
     val result = Await.result(future, Duration.Inf).rows.get;
     val count = result.count { x => !x.isEmpty };
     if (count == 1)
       result.head.mkString.toInt;
     else
-      -1
+      -1;
   }
 
   def getSubmissionsFromDb: Map[String, Int] = {
     //    Returns user's submission from database in form of a Map with key as submission id and value as score of the submission.
     val query = "SELECT sid, score FROM submission where uid = ?";
-    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id + "1"))
+    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id + "1"));
     val result = Await.result(future, Duration.Inf).rows.get;
     var submissionScoreMap: Map[String, Int] = Map[String, Int]();
     result.foreach { x => submissionScoreMap(x.head.toString) = x.tail.head.toString.toInt };
@@ -73,7 +73,7 @@ class User(uid: String) {
 
       if (oldKarma != karma) {
         val query = "INSERT INTO user_score (uid, karma, updated_at) VALUES (?, ?, ?)";
-        val future = connection.sendPreparedStatement(query, Array(id, karma, timestamp))
+        val future = connection.sendPreparedStatement(query, Array(id, karma, timestamp));
         Await.result(future, Duration.Inf);
         if (oldKarma > -1) {
           //          user already in db
