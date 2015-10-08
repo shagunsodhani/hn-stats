@@ -56,3 +56,8 @@ local.properties
 
 # TeXlipse plugin
 .texlipse
+
+#config
+src/resources/config.conf
+
+.cache-main
