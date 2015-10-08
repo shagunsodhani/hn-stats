@@ -6,6 +6,7 @@ import DefaultJsonProtocol._
 import com.github.mauricio.async.db.{ RowData, QueryResult, Connection }
 import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration._
+import scala.collection.mutable.Map
 
 class User(uid: String) {
 
@@ -20,11 +21,11 @@ class User(uid: String) {
   }
 
   def getKarmaFromDb: Int = {
-    //    Returns user's kerma from databaseb. If user is not found then return -1
+    //    Returns user's karma from database. If user is not found then return -1
     //    So this method doubles up to check if a user exists in database
     val query = "SELECT karma FROM user where id = ?";
     val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id))
-    val result = Await.result(future, Duration(10, SECONDS)).rows.get;
+    val result = Await.result(future, Duration.Inf).rows.get;
     val count = result.count { x => !x.isEmpty };
     if (count == 1)
       result.head.mkString.toInt;
@@ -32,21 +33,31 @@ class User(uid: String) {
       -1
   }
 
+  def getSubmissionsFromDb: Map[String, Int] = {
+    //    Returns user's submission from database in form of a Map with key as submission id and value as score of the submission.
+    val query = "SELECT sid, score FROM submission where uid = ?";
+    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id + "1"))
+    val result = Await.result(future, Duration.Inf).rows.get;
+    var submissionScoreMap: Map[String, Int] = Map[String, Int]();
+    result.foreach { x => submissionScoreMap(x.head.toString) = x.tail.head.toString.toInt };
+    submissionScoreMap;
+  }
+
   def updateStats: Any = {
 
-    def getList(seq: Seq[JsValue]): Array[String] = {
+    def getSubmissionArray(seq: Seq[JsValue]): Array[String] = {
       seq.head.toString().split("\\[")(1).split("\\]")(0).split(",");
     }
 
     val result = getData;
     val karma: Int = result.getFields("karma").mkString.toInt;
     val createdAt: Int = result.getFields("created").mkString.toInt;
-    val submissions: Array[String] = getList(result.getFields("submitted"));
+    val submissions: Array[String] = getSubmissionArray(result.getFields("submitted"));
     val oldKarma = getKarmaFromDb;
+    val oldSubmissions = getSubmissionsFromDb;
+    val timestamp: Long = System.currentTimeMillis / 1000;
 
     def updateKarma = {
-
-      val timestamp: Long = System.currentTimeMillis / 1000;
 
       def insertNewUser = {
         val query = "INSERT INTO user (karma, inserted_at, updated_at, id) VALUES (?, ?, ?, ?)";
@@ -76,6 +87,19 @@ class User(uid: String) {
       }
     }
 
+    var diff = karma - oldKarma;
+
+    def updateSubmissions(submissionArray: Array[String], counter: Int): Unit = {
+      if (counter > 0 && diff != 0) {
+        val sid = submissionArray.head;
+        val oldScore: Int = oldSubmissions.getOrElse(sid, -1);
+        diff += new Submission(sid, oldScore, connection).updateStats;
+        updateSubmissions(submissionArray.tail, counter - 1);
+        //        tail recursion
+      }
+    }
+
+    updateSubmissions(submissions, submissions.length);
     updateKarma;
   }
 };
