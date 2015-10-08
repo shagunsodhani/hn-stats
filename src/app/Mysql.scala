@@ -2,11 +2,9 @@ package app
 
 import com.github.mauricio.async.db.mysql.MySQLConnection
 import com.github.mauricio.async.db.Configuration
-import com.typesafe.config.ConfigFactory
 import java.io.File
 import scala.util.Properties
 import java.io.File
-import com.typesafe.config.{ Config, ConfigFactory }
 import java.util.Properties
 import java.io.FileInputStream
 
