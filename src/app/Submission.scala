@@ -4,11 +4,13 @@ import scala.io.Source.fromURL
 import spray.json._
 import scala.concurrent.duration.Duration
 import scala.concurrent.Await
+import java.io.FileWriter
 
 class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.async.db.mysql.MySQLConnection) {
   private val id: String = sid;
   private val oldScore: Int = score;
   private val connection: com.github.mauricio.async.db.mysql.MySQLConnection = mysqlConnection;
+  private val file = new FileWriter("logging.txt", true);
 
   def getData: JsObject = {
     //    get data from hackernewsAPI
@@ -28,8 +30,8 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     val hn_type: String = result.getFields("type").mkString.replace("\"", "");
 
     def insertNewSubmission = {
-      val query = "INSERT INTO submission (sid, uid, created_at, score, type) VALUES (?, ?, ?, ?, ?)";
-      val future = connection.sendPreparedStatement(query, Array(sid, uid, createdAt, score, hn_type));
+      val query = "INSERT INTO submission (sid, uid, created_at, score, type) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE created_at=?";
+      val future = connection.sendPreparedStatement(query, Array(sid, uid, createdAt, score, hn_type, createdAt));
       Await.result(future, Duration.Inf);
     }
 
@@ -38,7 +40,9 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
       val timestamp: Long = System.currentTimeMillis / 1000;
       val future = connection.sendPreparedStatement(query, Array(sid, timestamp, score));
       Await.result(future, Duration.Inf);
-      println("updated sid = " + sid);
+      file.write("updated sid = " + sid + "\n");
+      file.flush();
+      file.close();
     }
 
     if (oldScore == -1) {
