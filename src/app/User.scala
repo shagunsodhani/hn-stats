@@ -36,8 +36,8 @@ class User(uid: String, numberOfOldSubmissionsToCheck: Int) {
 
   def getSubmissionsFromDb: Map[String, Int] = {
     //    Returns user's submission from database in form of a Map with key as submission id and value as score of the submission.
-    val query = "SELECT sid, score FROM submission where uid = ? ORDER BY created_at DESC";
-    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id + "1"));
+    val query = "SELECT sid, score FROM submission where uid = ? ORDER BY created_at ASC";
+    val future: Future[QueryResult] = connection.sendPreparedStatement(query, Array(id));
     val result = Await.result(future, Duration.Inf).rows.get;
     var submissionScoreMap: Map[String, Int] = Map[String, Int]();
     result.foreach { x => submissionScoreMap(x.head.toString) = x.tail.head.toString.toInt };
@@ -56,6 +56,7 @@ class User(uid: String, numberOfOldSubmissionsToCheck: Int) {
     val submissions: Array[String] = getSubmissionArray(result.getFields("submitted"));
     val oldKarma = getKarmaFromDb;
     val oldSubmissions = getSubmissionsFromDb;
+    val oldSubmissionsList = oldSubmissions.keys.toList.sortWith(_.toInt > _.toInt);
     val timestamp: Long = System.currentTimeMillis / 1000;
 
     def updateKarma = {
@@ -113,14 +114,6 @@ class User(uid: String, numberOfOldSubmissionsToCheck: Int) {
       }
     }
 
-    def findOldSubmissionsToCheck(submissionArray: Map[String, Int], counter: Int): List[String] = {
-      if (counter > 0) {
-        submissionArray.head._1 :: findOldSubmissionsToCheck(submissionArray.tail, counter - 1);
-      } else {
-        Nil;
-      }
-    }
-
     val counterOldSubmissionsToCheck: Int = {
       var counterOldSubmissions: Int = 0;
       oldSubmissions.foreach(_ => counterOldSubmissions += 1);
@@ -131,7 +124,7 @@ class User(uid: String, numberOfOldSubmissionsToCheck: Int) {
       }
     }
 
-    val listToUpdate = newSubmissions ::: findOldSubmissionsToCheck(oldSubmissions, counterOldSubmissionsToCheck);
+    val listToUpdate = newSubmissions ::: oldSubmissionsList.take(counterOldSubmissionsToCheck);
     updateSubmissions(listToUpdate, listToUpdate.length);
     updateKarma;
   }
