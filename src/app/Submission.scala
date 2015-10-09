@@ -36,10 +36,14 @@ class Submission(sid: String, score: Int, mysqlConnection: com.github.mauricio.a
     }
 
     def updateSubmission = {
-      val query = "INSERT INTO submission_score (sid, updated_at, votes) VALUES (?, ?, ?)";
+      var query = "INSERT INTO submission_score (sid, updated_at, votes) VALUES (?, ?, ?)";
       val timestamp: Long = System.currentTimeMillis / 1000;
-      val future = connection.sendPreparedStatement(query, Array(sid, timestamp, score));
+      var future = connection.sendPreparedStatement(query, Array(sid, timestamp, score));
       Await.result(future, Duration.Inf);
+      query = "UPDATE submission SET score = ?, updated_at = ? WHERE sid = ?";
+      future = connection.sendPreparedStatement(query, Array(score, timestamp, sid));
+      Await.result(future, Duration.Inf);
+
       file.write("updated sid = " + sid + "\n");
       file.flush();
       file.close();
