@@ -18,7 +18,7 @@ For a new user
 * `uid`, `updated_at` (=current timestamp) and `karma` is inserted in a new row in `user_score` table.
 * All his submissions are downloaded and logged in `submission` table. Corresponding scores are logged in `submission_score` table.
 
-For a repeated user
+For a returning user
 * The row corresponding to this user in `user` table is updated to reflect the new `karma` and `updated_at` ( = current timestamp).
 * If there is any change in `karma`,a new row is inserted in `user_score` as before.
 * All his new submissions are logged in `submission` table. Corresponding scores are logged in `submission_score` table.
